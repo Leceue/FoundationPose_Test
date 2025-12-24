@@ -28,6 +28,7 @@ import numpy as np
 import imageio
 import cv2
 import trimesh
+import time
 
 import torch
 
@@ -180,6 +181,10 @@ def run_single(args):
     # 渲染上下文
     glctx = dr.RasterizeCudaContext() if dr is not None else None
 
+    # 当前运行时间,程序时间戳,输出时分秒
+    start_time = time.time()
+    print("当前运行时间为 :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time)))
+
     # 初始化估计器
     scorer = ScorePredictor()
     refiner = PoseRefinePredictor()
@@ -194,8 +199,15 @@ def run_single(args):
         glctx=glctx
     )
 
+    mid_time = time.time()
+    print("开始单帧位姿估计时间为 :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mid_time)))
+
     # 执行初始化配准（返回 4x4 位姿矩阵，物体到相机）
     pose = est.register(K=K, rgb=color, depth=depth, ob_mask=mask, iteration=args.est_refine_iter)
+
+    end_time = time.time()
+    print("结束单帧位姿估计时间为 :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time)))
+    print("单帧位姿估计总耗时为 : %.3f 秒" % (end_time - start_time))
 
     # 保存位姿
     np.savetxt(os.path.join(debug_dir, 'ob_in_cam', '000000.txt'), pose.reshape(4, 4))
@@ -230,6 +242,7 @@ def run_sequence(args):
 
     scorer = ScorePredictor()
     refiner = PoseRefinePredictor()
+
     est = FoundationPose(
         model_pts=mesh.vertices,
         model_normals=mesh.vertex_normals,
